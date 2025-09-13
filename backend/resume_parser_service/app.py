@@ -1,35 +1,32 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+import shutil
 import os
-from pathlib import Path
+from resume_parser import extract_text_from_pdf, extract_text_from_docx, parse_resume
 
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.get("/")
-def root():
-    return {"message": "AI Resume Screener backend is running!"}
+@app.post("/extract")
+async def extract_resume(file: UploadFile = File(...)):
+    # File ko save karna
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-@app.post("/upload")
-async def upload(file: UploadFile = File(...)):
-    # file key ka naam exactly "file" hona chahiye (Postman me bhi yahi use hoga)
-    save_path = UPLOAD_DIR / file.filename
-    with open(save_path, "wb") as f:
-        f.write(await file.read())
+    # File type check
+    if file.filename.endswith(".pdf"):
+        text = extract_text_from_pdf(file_path)
+    elif file.filename.endswith(".docx"):
+        text = extract_text_from_docx(file_path)
+    else:
+        return {"error": "Unsupported file format"}
 
-    size = save_path.stat().st_size
-    return JSONResponse({
-        "message": "File uploaded",
+    # Resume parsing
+    parsed = parse_resume(text)
+
+    return {
         "filename": file.filename,
-        "size": size,
-        "saved_path": str(save_path.resolve())
-    })
+        "parsed_data": parsed
+    }
