@@ -1,21 +1,44 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import UploadResume from "./pages/UploadResume";
+import React, { useState } from "react";
 
 function App() {
-  return (
-    <Router>
-      <div className="p-6">
-        <nav className="mb-4">
-          <Link to="/" className="mr-4">Home</Link>
-          <Link to="/upload">Upload Resume</Link>
-        </nav>
+  const [file, setFile] = useState(null);
+  const [result, setResult] = useState(null);
 
-        <Routes>
-          <Route path="/" element={<h1 className="text-2xl">Welcome to AI Resume Screener</h1>} />
-          <Route path="/upload" element={<UploadResume />} />
-        </Routes>
-      </div>
-    </Router>
+  const handleUpload = async () => {
+    if (!file) {
+      alert("Please select a resume file first!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("http://127.0.0.1:5002/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      console.error("Error uploading:", err);
+    }
+  };
+
+  return (
+    <div style={{ padding: "20px" }}>
+      <h1>AI Resume Screener</h1>
+      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <button onClick={handleUpload}>Upload Resume</button>
+
+      {result && (
+        <div style={{ marginTop: "20px" }}>
+          <h3>Parsed Resume:</h3>
+          <pre>{JSON.stringify(result, null, 2)}</pre>
+        </div>
+      )}
+    </div>
   );
 }
 
