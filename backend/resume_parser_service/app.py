@@ -1,32 +1,28 @@
-from fastapi import FastAPI, UploadFile, File
-import shutil
+from flask import Flask, request, jsonify
 import os
-from resume_parser import extract_text_from_pdf, extract_text_from_docx, parse_resume
 
-app = FastAPI()
+app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Folder to store uploaded files
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-@app.post("/extract")
-async def extract_resume(file: UploadFile = File(...)):
-    # File ko save karna
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
 
-    # File type check
-    if file.filename.endswith(".pdf"):
-        text = extract_text_from_pdf(file_path)
-    elif file.filename.endswith(".docx"):
-        text = extract_text_from_docx(file_path)
-    else:
-        return {"error": "Unsupported file format"}
+    file = request.files["file"]
 
-    # Resume parsing
-    parsed = parse_resume(text)
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
 
-    return {
-        "filename": file.filename,
-        "parsed_data": parsed
-    }
+    # Save the file into uploads folder
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)
+
+    return jsonify({"message": f"File {file.filename} uploaded successfully!"})
+
+if __name__ == "__main__":
+    app.run(debug=True)

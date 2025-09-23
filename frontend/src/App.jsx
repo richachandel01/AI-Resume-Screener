@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 function App() {
   const [file, setFile] = useState(null);
-  const [result, setResult] = useState(null);
+  const [message, setMessage] = useState("");
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -10,7 +10,7 @@ function App() {
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please select a resume file first!");
+      setMessage("Please select a file first!");
       return;
     }
 
@@ -18,30 +18,24 @@ function App() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://127.0.0.1:5002/extract", {
+      const response = await fetch("http://127.0.0.1:5000/upload", {
         method: "POST",
         body: formData,
       });
 
       const data = await response.json();
-      setResult(data);
+      setMessage(data.message || "File uploaded successfully!");
     } catch (error) {
-      console.error("Error uploading file:", error);
+      setMessage("Upload failed. Check backend server.");
     }
   };
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>AI Resume Screener</h2>
+      <h1>AI Resume Screener</h1>
       <input type="file" onChange={handleFileChange} />
       <button onClick={handleUpload}>Upload Resume</button>
-
-      {result && (
-        <div style={{ marginTop: "20px" }}>
-          <h3>Extracted Data:</h3>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
-        </div>
-      )}
+      <p>{message}</p>
     </div>
   );
 }
