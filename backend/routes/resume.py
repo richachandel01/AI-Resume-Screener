@@ -14,3 +14,5 @@ async def upload_resume(file: UploadFile = File(...)):
         f.write(await file.read())
     
     return {"message": "Resume uploaded successfully!", "filename": file.filename}
+
+

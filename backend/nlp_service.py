@@ -1,24 +1,18 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile
+import pdfplumber
 
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"message": "NLP Service Running 🚀"}
-
-@app.post("/process_resume/")
-async def process_resume(file: UploadFile = File(...)):
-    content = await file.read()
-    text = content.decode("utf-8", errors="ignore")
-
-    # Dummy skill extraction
-    skills = []
-    for skill in ["Python", "Java", "C++", "SQL", "AWS", "React", "Flask"]:
-        if skill.lower() in text.lower():
-            skills.append(skill)
-
-    return {
-        "filename": file.filename,
-        "skills": skills,
-        "summary": f"Extracted {len(skills)} skills"
-    }
+@app.post("/extract")
+async def extract_text(file: UploadFile = File(...)):
+    """
+    Extract text from uploaded PDF file.
+    """
+    try:
+        with pdfplumber.open(file.file) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text() or ""
+        return {"text": text}
+    except Exception as e:
+        return {"error": str(e)}
