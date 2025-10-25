@@ -1,28 +1,25 @@
-from flask import Flask, request, jsonify
-import os
+from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
+db = SQLAlchemy()
 
-# Folder to store uploaded files
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+class Resume(db.Model):
+    __tablename__ = 'resumes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    email = db.Column(db.String(100))
+    phone = db.Column(db.String(50))
+    skills = db.Column(db.Text)
+    education = db.Column(db.Text)
+    experience = db.Column(db.Text)
 
-@app.route("/upload", methods=["POST"])
-def upload_file():
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    def __init__(self, name, email, phone, skills, education, experience):
+        self.name = name
+        self.email = email
+        self.phone = phone
+        self.skills = skills
+        self.education = education
+        self.experience = experience
 
-    file = request.files["file"]
-
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-
-    # Save the file into uploads folder
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
-
-    return jsonify({"message": f"File {file.filename} uploaded successfully!"})
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    def __repr__(self):
+        return f"<Resume {self.name}>"

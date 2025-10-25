@@ -1,3 +1,101 @@
+# backend/app.py
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import os, requests
+
+# import db and model object
+from models.resume_model import db, Resume
+
+app = Flask(__name__)
+
+# ---------------- DATABASE CONFIG ----------------
+db_path = os.path.join(os.path.dirname(__file__), "resume_data.db")
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# init db with app
+db.init_app(app)
+
+# enable CORS for frontend (adjust origins if needed)
+CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})
+
+# upload folder
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# ---------------- UPLOAD ROUTE ----------------
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if not file.filename.lower().endswith(('.pdf', '.docx')):
+        return jsonify({"error": "File type not allowed"}), 400
+
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)
+
+    # call NLP service
+    NLP_URL = "http://127.0.0.1:5002/extract"
+    try:
+        with open(filepath, "rb") as f:
+            resp = requests.post(NLP_URL, files={"file": f}, timeout=30)
+            resp.raise_for_status()
+            parsed = resp.json()
+    except Exception as e:
+        return jsonify({"error": f"NLP service failed: {str(e)}"}), 500
+
+    name = parsed.get('names', [None])[0] if parsed.get('names') else None
+    email = parsed.get('emails', [None])[0] if parsed.get('emails') else None
+    skills = ",".join(parsed.get('skills', [])) if parsed.get('skills') else None
+
+    with app.app_context():
+        resume = Resume(
+            filename=file.filename,
+            name=name,
+            email=email,
+            phone=parsed.get('phone'),
+            skills=skills,
+            experience=parsed.get('experience'),
+            education=parsed.get('education'),
+            parsed_json=parsed
+        )
+        db.session.add(resume)
+        db.session.commit()
+
+    return jsonify({"message": "File uploaded and parsed successfully", "resume_id": resume.id, "data": parsed})
+
+
+# ---------------- Resumes CRUD ----------------
+@app.route("/resumes", methods=["GET"])
+def list_resumes():
+    resumes = Resume.query.order_by(Resume.id.desc()).all()
+    return jsonify([r.to_dict() for r in resumes])
+
+@app.route("/resumes/<int:resume_id>", methods=["GET"])
+def get_resume(resume_id):
+    r = Resume.query.get_or_404(resume_id)
+    return jsonify(r.to_dict())
+
+@app.route("/resumes/<int:resume_id>", methods=["DELETE"])
+def delete_resume(resume_id):
+    r = Resume.query.get_or_404(resume_id)
+    db.session.delete(r)
+    db.session.commit()
+    return jsonify({"message": "Deleted", "id": resume_id})
+
+
+# ---------------- Create DB on startup ----------------
+with app.app_context():
+    db.create_all()
+
+# ---------------- Run ----------------
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=True)
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
