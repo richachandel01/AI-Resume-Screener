@@ -1,25 +1,22 @@
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
+from flask_cors import CORS
+from models.resume_model import db
+from routes.resume import resume_bp
 
-db = SQLAlchemy()
+app = Flask(__name__)
+CORS(app)
 
-class Resume(db.Model):
-    __tablename__ = 'resumes'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100))
-    email = db.Column(db.String(100))
-    phone = db.Column(db.String(50))
-    skills = db.Column(db.Text)
-    education = db.Column(db.Text)
-    experience = db.Column(db.Text)
+# Database setup
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/resumes.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    def __init__(self, name, email, phone, skills, education, experience):
-        self.name = name
-        self.email = email
-        self.phone = phone
-        self.skills = skills
-        self.education = education
-        self.experience = experience
+db.init_app(app)
 
-    def __repr__(self):
-        return f"<Resume {self.name}>"
+# Register blueprint routes
+app.register_blueprint(resume_bp)
+
+with app.app_context():
+    db.create_all()
+
+if __name__ == "__main__":
+    app.run(debug=True)

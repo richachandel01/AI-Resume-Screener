@@ -1,11 +1,14 @@
-fetch("http://127.0.0.1:5000/upload", { ...
-const [extractedData, setExtractedData] = useState(null);
+import React from "react";
+import UploadResume from "./components/UploadResume";
+import "./App.css";
 
-{extractedData && (
-  <div>
-    <h3>Extracted Resume Data</h3>
-    <p><strong>Emails:</strong> {extractedData.emails.join(", ")}</p>
-    <p><strong>Names:</strong> {extractedData.names.join(", ")}</p>
-    <p><strong>Skills:</strong> {extractedData.skills.join(", ")}</p>
-  </div>
-)}
+function App() {
+  return (
+    <div style={{ padding: "1.5rem" }}>
+      <h1>AI Resume Screener — Frontend Smoke Test</h1>
+      <UploadResume />
+    </div>
+  );
+}
+
+export default App;

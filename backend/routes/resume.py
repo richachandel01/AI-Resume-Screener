@@ -1,18 +1,41 @@
-from fastapi import APIRouter, UploadFile, File
-import os
+from flask import Blueprint, jsonify, request
+from models.resume_model import db, Resume
 
-router = APIRouter()
+resume_bp = Blueprint('resume_bp', __name__, url_prefix='/api/resumes')
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+@resume_bp.route('/', methods=['GET'])
+def get_resumes():
+    resumes = Resume.query.all()
+    result = [
+        {
+            "id": r.id,
+            "name": r.name,
+            "email": r.email,
+            "skills": r.skills
+        } for r in resumes
+    ]
+    return jsonify(result)
 
-@router.post("/upload_resume/")
-async def upload_resume(file: UploadFile = File(...)):
-    file_location = os.path.join(UPLOAD_DIR, file.filename)
-    
-    with open(file_location, "wb") as f:
-        f.write(await file.read())
-    
-    return {"message": "Resume uploaded successfully!", "filename": file.filename}
+@resume_bp.route('/', methods=['POST'])
+def add_resume():
+    data = request.get_json()
+    new_resume = Resume(
+        name=data['name'],
+        email=data['email'],
+        phone=data.get('phone', ''),
+        skills=data.get('skills', ''),
+        education=data.get('education', ''),
+        experience=data.get('experience', '')
+    )
+    db.session.add(new_resume)
+    db.session.commit()
+    return jsonify({"message": "Resume added successfully!"}), 201
 
-
+@resume_bp.route('/<int:id>', methods=['DELETE'])
+def delete_resume(id):
+    resume = Resume.query.get(id)
+    if not resume:
+        return jsonify({"message": "Resume not found"}), 404
+    db.session.delete(resume)
+    db.session.commit()
+    return jsonify({"message": "Resume deleted successfully!"})
